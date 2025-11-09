@@ -149,24 +149,7 @@ All plans confirm that **Photon execution** handled scans, joins, and aggregatio
 
 ---
 
-## 6) Cache Optimization (Bonus)
-
-We materialize a frequently used slice (Q1 2025 rows) and run repeated actions:
-
-```python
-hot = (with_zones
-  .filter((F.col("year")==2025) & (F.col("month").isin(1,2,3)))
-  .select("PULocationID","revenue","speed_mph","pickup_ts"))
-_ = hot.count()     # cold
-hot.cache()
-_ = hot.count()     # warm (faster)
-```
-
-**Observation:** The second count completes faster (cluster-dependent). Mention observed timings in the submission.
-
----
-
-## 7) Actions vs. Transformations
+## 6) Actions vs. Transformations
 
 * **Transformations (lazy)**: `filter`, `select`, `withColumn` — build the logical plan only.
 * **Actions (eager)**: `count()`, `show()`, `write` — **trigger** execution of the plan.
@@ -180,7 +163,7 @@ print("Actions vs Transformations — count():", lazy_df.count())
 
 ---
 
-## 8) Repository Layout (suggested)
+## 7) Repository Layout (suggested)
 
 ```
 IDS706_DE_WK11/
@@ -190,7 +173,7 @@ IDS706_DE_WK11/
 
 ---
 
-## 9) Grading Checklist (Rubric Mapping)
+## 8) Grading Checklist (Rubric Mapping)
 
 * **Dataset Selection & Loading**: 3× Parquet files (1GB+ combined) ✅
 * **Transformations**: withColumn derivations; 2+ filters; column pruning ✅
@@ -206,7 +189,7 @@ IDS706_DE_WK11/
 
 ---
 
-## 10) Notes
+## 9) Notes
 
 * Monetary fields are `coalesce`d to avoid null arithmetic; `revenue` includes fare, tips, tolls, taxes, surcharges, and fees.
 * `speed_mph` is computed from `trip_miles` and `trip_time` (seconds); extreme values are filtered.
