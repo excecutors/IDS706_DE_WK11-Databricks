@@ -118,34 +118,54 @@ This project builds a distributed data pipeline in PySpark on the **NYC For-Hire
 
 ## 5) Performance Analysis (Execution Plans)
 
-**Artifacts captured in notebook output:**
+Since the Databricks Free Edition does not provide full Spark UI access,
+execution plans were captured directly from the `.explain(mode="formatted")`
+outputs of three representative queries:
 
-* `.explain(mode="formatted")` for: `kpi_month`, `sql_a`, and `top_borough` (which includes the broadcast join).
-* Execution plans are printed directly in the notebook output for visibility instead of attached images.
+| File | Query / Stage | Description |
+|------|----------------|-------------|
+| `docs/explain_kpi_month.png` | **kpi_month** | Monthly KPI aggregation (groupBy and aggregation stages). Shows `PhotonGroupingAgg`, `PhotonProject`, and `AdaptiveSparkPlan`. Demonstrates vectorized aggregation and column pruning. |
+| `docs/explain_sql_a.png` | **sql_a** | SQL query computing monthly KPIs with an explicit filter on valid speed ranges. Shows `PhotonScan parquet` with `RequiredDataFilters`, confirming **predicate pushdown** and column pruning. |
+| `docs/explain_top_borough.png` | **top_borough** | Join and aggregation by pickup borough using a broadcast lookup table. Shows `PhotonBroadcastHashJoin` and `AdaptiveSparkPlan`, confirming Spark automatically broadcasted the small lookup dataset. |
 
-### What Spark Optimized
+Each `.explain()` output includes a **"== Physical Plan =="** section followed by
+`== Photon Explanation == The query is fully supported by Photon.`, verifying that
+Databricks executed the entire pipeline using **Photon’s columnar optimizer**.
 
-* **Predicate Pushdown:**  Filters for non-null pickup/dropoff IDs, positive trip distances and durations, and valid speed ranges were all pushed down to the Parquet scan level. In the `PhotonScan parquet` section, these appear as `RequiredDataFilters`, reducing I/O by filtering early.
-* **Column Pruning:**  The plan shows `PhotonProject` stages selecting only required columns (trip metrics, fare/tips/tolls/revenue fields), minimizing data movement and serialization.
-* **Aggregation Optimization:**  The `PhotonGroupingAgg` stage illustrates a partial → shuffle → final aggregation pattern, enabling efficient vectorized columnar processing.
-* **BroadcastHashJoin:**  The borough lookup join uses `PhotonBroadcastHashJoin LeftOuter`, confirming Spark automatically broadcasted the small lookup file to avoid a large shuffle on the trip data.
-* **Adaptive Query Execution (AQE):**  Detected under `AdaptiveSparkPlan`, Spark optimized shuffle partitioning and aggregation merging dynamically at runtime.
+### Key Optimizations Observed
+
+* **Predicate Pushdown:**  
+  `PhotonScan parquet` blocks include `RequiredDataFilters`, proving that filters on trip distance, duration, and speed were applied **before** shuffles to minimize I/O.
+
+* **Column Pruning:**  
+  `PhotonProject` stages show only the required fields (`trip_miles`, `trip_time`, `fare`, `tips`, etc.), reducing serialization overhead.
+
+* **Aggregation Optimization:**  
+  `PhotonGroupingAgg` appears in both `kpi_month` and `sql_a`, showing partial → shuffle → final aggregation pattern for efficient vectorized processing.
+
+* **Broadcast Join:**  
+  `top_borough` contains a `PhotonBroadcastHashJoin LeftOuter`, confirming that the small taxi-zone lookup file was broadcast to avoid a large shuffle on the main dataset.
+
+* **Adaptive Query Execution (AQE):**  
+  `AdaptiveSparkPlan` nodes appear in all plans, showing dynamic shuffle coalescing and skew handling during runtime.
 
 ### Bottlenecks & Mitigations
 
-* **Shuffle Overhead:**  GroupBy operations cause expected shuffles, mitigated by AQE and sensible partition counts.
-* **Potential Skew:**  Zones with very high trip volumes can cause skew, but AQE’s skew handling balances reducers automatically. Further salting could be applied in production workloads.
-* **Output Parallelism:**  `coalesce(1)` was used for readability in this submission; in production, parallel writes would be preserved for performance.
+* **Shuffle Overhead:** inevitable for groupBy stages; mitigated by AQE.  
+* **Skew Handling:** AQE automatically merged skewed partitions.  
+* **Output Parallelism:** `coalesce(1)` used for readability only; in production, parallel partitioned writes should be preserved.
 
-### Key KPI Results (Jan–Mar 2025)
+### KPI Summary (Jan–Mar 2025)
 
-| Month    | Trips      | Avg Speed (mph) | Total Revenue (USD) |
-| -------- | ---------- | --------------- | ------------------- |
-| Jan 2025 | 20,400,288 | 13.94           | ≈6.26×10⁸           |
-| Feb 2025 | 19,334,052 | 13.69           | ≈6.09×10⁸           |
-| Mar 2025 | 20,531,303 | 13.80           | ≈7.09×10⁸           |
+| Month | Trips | Avg Speed (mph) | Total Revenue (USD) |
+|--------|-------|----------------|--------------------|
+| Jan 2025 | 20,400,288 | 13.94 | ≈ 6.26 × 10⁸ |
+| Feb 2025 | 19,334,052 | 13.69 | ≈ 6.09 × 10⁸ |
+| Mar 2025 | 20,531,303 | 13.80 | ≈ 7.09 × 10⁸ |
 
-All plans confirm that **Photon execution** handled scans, joins, and aggregations efficiently with full vectorization. The presence of `PhotonScan parquet`, `PhotonBroadcastHashJoin`, and `AdaptiveSparkPlan` in each explain output validates that Spark performed full predicate pushdown, column pruning, and adaptive execution optimizations during runtime.
+All three plans confirm full **Photon execution** with efficient columnar scanning,
+broadcast joins, and AQE. The screenshots in the `docs/` folder serve as the
+“Execution Plan and Spark UI Screenshots” deliverables for this submission.
 
 ---
 
@@ -168,7 +188,11 @@ print("Actions vs Transformations — count():", lazy_df.count())
 ```
 IDS706_DE_WK11/
 ├── README.md
-└── Week11_PySpark_FHVHV.ipynb
+├── Week11_PySpark_FHVHV.ipynb
+└── docs/
+    ├── explain_kpi_month.png
+    ├── explain_sql_a.png
+    └── explain_top_borough.png
 ```
 
 ---
