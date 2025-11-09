@@ -1,6 +1,6 @@
 # Week 11 — PySpark Data Processing (NYC FHVHV Trips, Jan–Mar 2025)
 
-This project builds a distributed data pipeline in PySpark on the **NYC For-Hire Vehicle High Volume (FHVHV: Uber/Lyft)** trip dataset (Jan–Mar 2025). It demonstrates **lazy vs eager execution**, **transformations and actions**, **SQL queries**, **joins**, **partitioned writes**, **predicate pushdown**, **broadcast joins**, **AQE**, and a **cache** optimization for repeated actions.
+This project builds a distributed data pipeline in PySpark on the **NYC For-Hire Vehicle High Volume (FHVHV: Uber/Lyft)** trip dataset (Jan–Mar 2025). It demonstrates **lazy vs eager execution**, **transformations and actions**, **SQL queries**, **joins**, **partitioned writes**, **predicate pushdown**, **broadcast joins**, and **AQE**.
 
 ---
 
@@ -185,7 +185,6 @@ IDS706_DE_WK11/
 * **Execution Plans / UI**: `.explain()` + Query Details screenshots ✅
 * **Performance Analysis**: Section 5 above ✅
 * **Actions vs Transformations**: Section 7 demo ✅
-* **(Bonus) Cache**: Section 6 ✅
 
 ---
 
